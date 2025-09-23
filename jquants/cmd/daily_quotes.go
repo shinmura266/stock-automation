@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"stock-automation/helper"
 	"stock-automation/jquants/service"
 	"time"
 
@@ -9,9 +10,10 @@ import (
 )
 
 var (
-	code  string
-	date  string
-	count int
+	code     string
+	date     string
+	count    int
+	interval int
 )
 
 var DailyQuotesCmd = &cobra.Command{
@@ -26,12 +28,13 @@ func init() {
 	DailyQuotesCmd.Flags().StringVar(&code, "code", "", "銘柄コード（指定しない場合は全銘柄）")
 	DailyQuotesCmd.Flags().StringVar(&date, "date", "", "日付（YYYY-MM-DD形式、codeともに指定しない場合は当日）")
 	DailyQuotesCmd.Flags().IntVar(&count, "count", 1, "取得する日数（指定した日付からさかのぼる日数、デフォルト: 1）")
+	DailyQuotesCmd.Flags().IntVar(&interval, "interval", 5, "インターバル（秒、デフォルト: 5）")
 }
 
 func updateDailyQuotes(cmd *cobra.Command, args []string) error {
 
 	if code == "" && date == "" {
-		date = getTodayDate()
+		date = helper.GetTodayDate()
 	}
 
 	service, err := service.NewDailyQuotesService()
@@ -45,13 +48,13 @@ func updateDailyQuotes(cmd *cobra.Command, args []string) error {
 	if code != "" {
 		// 指定銘柄の複数日付データを取得
 		codes := []string{code}
-		err = service.UpdateDailyQuotesMultipleDates(codes, dates, 1000)
+		err = service.UpdateDailyQuotesMultipleDates(codes, dates, interval*1000)
 		if err != nil {
 			return fmt.Errorf("株価データ更新エラー: %v", err)
 		}
 	} else {
 		// 全銘柄の複数日付データを取得
-		err = service.UpdateDailyQuotesMultipleDates([]string{}, dates, 1000)
+		err = service.UpdateDailyQuotesMultipleDates([]string{}, dates, interval*1000)
 		if err != nil {
 			return fmt.Errorf("株価データ更新エラー: %v", err)
 		}
@@ -60,11 +63,6 @@ func updateDailyQuotes(cmd *cobra.Command, args []string) error {
 	fmt.Printf("株価データ更新完了（%d日分）\n", len(dates))
 
 	return nil
-}
-
-// getTodayDate 当日の日付をYYYYMMDD形式で取得
-func getTodayDate() string {
-	return time.Now().Format("2006-01-02")
 }
 
 // generateBackwardDates 指定した日付からcount数分の日付をさかのぼって生成

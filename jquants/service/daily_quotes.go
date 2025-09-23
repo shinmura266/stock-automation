@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"stock-automation/database"
+	"stock-automation/helper"
 	"stock-automation/jquants/api"
 	"stock-automation/schema"
 	"time"
@@ -93,7 +94,7 @@ func (s *DailyQuotesService) GetDailyQuotesMultipleDates(codes []string, dates [
 	}
 
 	if intervalMs <= 0 {
-		intervalMs = 1000 // デフォルト1秒間隔
+		intervalMs = 5000 // デフォルト5秒間隔
 	}
 
 	result := make(map[string]map[string][]schema.DailyQuote)
@@ -123,7 +124,7 @@ func (s *DailyQuotesService) GetDailyQuotesMultipleDates(codes []string, dates [
 				// 保存後は空のスライスを返す（実際のデータはDBに保存済み）
 				dateResult[code] = []schema.DailyQuote{}
 
-				// 間隔制御
+				// 銘柄間の間隔制御
 				if intervalMs > 0 {
 					time.Sleep(time.Duration(intervalMs) * time.Millisecond)
 				}
@@ -144,11 +145,11 @@ func (s *DailyQuotesService) GetDailyQuotesMultipleDates(codes []string, dates [
 // UpdateDailyQuotesAllStocks 全銘柄の株価データを取得し、DBに保存（間隔制御付き）
 func (s *DailyQuotesService) UpdateDailyQuotesAllStocks(date string, intervalMs int) error {
 	if date == "" {
-		date = getTodayDate()
+		date = helper.GetTodayDate()
 	}
 
 	if intervalMs <= 0 {
-		intervalMs = 1000 // デフォルト1秒間隔
+		intervalMs = 5000 // デフォルト5秒間隔
 	}
 
 	slog.Info("全銘柄株価データ取得・保存開始", "date", date)
@@ -169,11 +170,11 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleStocks(codes []string, dat
 	}
 
 	if date == "" {
-		date = getTodayDate()
+		date = helper.GetTodayDate()
 	}
 
 	if intervalMs <= 0 {
-		intervalMs = 1000 // デフォルト1秒間隔
+		intervalMs = 5000 // デフォルト5秒間隔
 	}
 
 	slog.Info("複数銘柄株価データ取得・保存開始", "date", date, "codes_count", len(codes))
@@ -190,7 +191,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleStocks(codes []string, dat
 
 		successCount++
 
-		// 間隔制御（最後のリクエスト以外）
+		// 銘柄間の間隔制御（最後のリクエスト以外）
 		if i < len(codes)-1 && intervalMs > 0 {
 			time.Sleep(time.Duration(intervalMs) * time.Millisecond)
 		}
@@ -207,7 +208,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleDates(codes []string, date
 	}
 
 	if intervalMs <= 0 {
-		intervalMs = 1000 // デフォルト1秒間隔
+		intervalMs = 5000 // デフォルト5秒間隔
 	}
 
 	slog.Info("複数日付株価データ取得・保存開始", "dates_count", len(dates), "codes_count", len(codes))
@@ -257,9 +258,4 @@ func (s *DailyQuotesService) Close() error {
 		return s.dbConn.Close()
 	}
 	return nil
-}
-
-// getTodayDate 当日の日付をYYYYMMDD形式で取得
-func getTodayDate() string {
-	return time.Now().Format("20060102")
 }

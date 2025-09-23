@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"stock-automation/schema"
 )
@@ -52,6 +53,9 @@ func (c *DailyQuotesClient) GetDailyQuotes(idToken, code, date string) ([]schema
 		}
 
 		params.Add("pagination_key", resp.PaginationKey)
+
+		// PaginationKeyによる繰り返し時に1秒のインターバル
+		time.Sleep(1 * time.Second)
 	}
 
 	return result, nil

@@ -39,4 +39,5 @@ func init() {
 
 	// サブコマンドを追加
 	rootCmd.AddCommand(cmd.DailyQuotesCmd)
+	rootCmd.AddCommand(cmd.StatementsCmd)
 }
