@@ -35,10 +35,13 @@ func NewDailyQuotesService() (*DailyQuotesService, error) {
 	}, nil
 }
 
-// UpdateDailyQuotesByCode 指定された銘柄コードの株価データを取得し、DBに保存
-func (s *DailyQuotesService) UpdateDailyQuotesByCode(code string, date string) error {
-	if code == "" {
-		return fmt.Errorf("銘柄コードが指定されていません")
+// UpdateDailyQuotes 株価データを取得し、DBに保存
+// code: 銘柄コード（空の場合は全銘柄）
+// date: 日付（空の場合は当日、ただしcodeが指定されている場合は全期間）
+func (s *DailyQuotesService) UpdateDailyQuotes(code, date string) error {
+	// codeもdateも両方とも空文字の場合は当日を使用
+	if code == "" && date == "" {
+		date = helper.GetTodayDate()
 	}
 
 	idToken, err := s.client.AuthClient.GetIdToken()
@@ -56,32 +59,6 @@ func (s *DailyQuotesService) UpdateDailyQuotesByCode(code string, date string) e
 			return fmt.Errorf("データベース保存エラー: %v", err)
 		}
 		slog.Info("銘柄別株価データ保存完了", "code", code, "date", date, "count", len(quotes))
-	}
-
-	return nil
-}
-
-// UpdateDailyQuotesByDate 指定された日付の全銘柄株価データを取得し、DBに保存
-func (s *DailyQuotesService) UpdateDailyQuotesByDate(date string) error {
-	if date == "" {
-		return fmt.Errorf("日付が指定されていません")
-	}
-
-	idToken, err := s.client.AuthClient.GetIdToken()
-	if err != nil {
-		return fmt.Errorf("IDトークン取得エラー: %v", err)
-	}
-	quotes, err := s.client.DailyQuotesClient.GetDailyQuotes(idToken, "", date)
-	if err != nil {
-		return fmt.Errorf("株価データ取得エラー: %v", err)
-	}
-
-	// データベースに保存
-	if len(quotes) > 0 {
-		if err := s.repository.SaveDailyQuotes(quotes); err != nil {
-			return fmt.Errorf("データベース保存エラー: %v", err)
-		}
-		slog.Info("日付別全銘柄株価データ保存完了", "date", date, "count", len(quotes))
 	}
 
 	return nil
@@ -106,7 +83,7 @@ func (s *DailyQuotesService) GetDailyQuotesMultipleDates(codes []string, dates [
 
 		if len(codes) == 0 {
 			// 全銘柄取得
-			err := s.UpdateDailyQuotesByDate(date)
+			err := s.UpdateDailyQuotes("", date)
 			if err != nil {
 				slog.Error("全銘柄株価データ取得・保存エラー", "date", date, "error", err)
 				continue
@@ -116,7 +93,7 @@ func (s *DailyQuotesService) GetDailyQuotesMultipleDates(codes []string, dates [
 		} else {
 			// 指定銘柄取得
 			for _, code := range codes {
-				err := s.UpdateDailyQuotesByCode(code, date)
+				err := s.UpdateDailyQuotes(code, date)
 				if err != nil {
 					slog.Error("銘柄別株価データ取得・保存エラー", "code", code, "date", date, "error", err)
 					continue
@@ -154,7 +131,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesAllStocks(date string, intervalMs 
 
 	slog.Info("全銘柄株価データ取得・保存開始", "date", date)
 
-	err := s.UpdateDailyQuotesByDate(date)
+	err := s.UpdateDailyQuotes("", date)
 	if err != nil {
 		return fmt.Errorf("全銘柄株価データ取得・保存エラー: %v", err)
 	}
@@ -183,7 +160,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleStocks(codes []string, dat
 	for i, code := range codes {
 		slog.Info("銘柄株価データ取得・保存中", "code", code, "progress", fmt.Sprintf("%d/%d", i+1, len(codes)))
 
-		err := s.UpdateDailyQuotesByCode(code, date)
+		err := s.UpdateDailyQuotes(code, date)
 		if err != nil {
 			slog.Error("銘柄株価データ取得・保存エラー", "code", code, "error", err)
 			continue
@@ -219,7 +196,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleDates(codes []string, date
 
 		if len(codes) == 0 {
 			// 全銘柄取得
-			err := s.UpdateDailyQuotesByDate(date)
+			err := s.UpdateDailyQuotes("", date)
 			if err != nil {
 				slog.Error("全銘柄株価データ取得・保存エラー", "date", date, "error", err)
 				continue
@@ -227,7 +204,7 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleDates(codes []string, date
 		} else {
 			// 指定銘柄取得
 			for _, code := range codes {
-				err := s.UpdateDailyQuotesByCode(code, date)
+				err := s.UpdateDailyQuotes(code, date)
 				if err != nil {
 					slog.Error("銘柄別株価データ取得・保存エラー", "code", code, "date", date, "error", err)
 					continue
