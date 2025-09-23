@@ -200,6 +200,57 @@ func (s *DailyQuotesService) UpdateDailyQuotesMultipleStocks(codes []string, dat
 	return nil
 }
 
+// UpdateDailyQuotesMultipleDates 複数日付の株価データを取得し、DBに保存（間隔制御付き）
+func (s *DailyQuotesService) UpdateDailyQuotesMultipleDates(codes []string, dates []string, intervalMs int) error {
+	if len(dates) == 0 {
+		return fmt.Errorf("日付が指定されていません")
+	}
+
+	if intervalMs <= 0 {
+		intervalMs = 1000 // デフォルト1秒間隔
+	}
+
+	slog.Info("複数日付株価データ取得・保存開始", "dates_count", len(dates), "codes_count", len(codes))
+
+	successCount := 0
+	for i, date := range dates {
+		slog.Info("日付別株価データ取得・保存中", "date", date, "progress", fmt.Sprintf("%d/%d", i+1, len(dates)))
+
+		if len(codes) == 0 {
+			// 全銘柄取得
+			err := s.UpdateDailyQuotesByDate(date)
+			if err != nil {
+				slog.Error("全銘柄株価データ取得・保存エラー", "date", date, "error", err)
+				continue
+			}
+		} else {
+			// 指定銘柄取得
+			for _, code := range codes {
+				err := s.UpdateDailyQuotesByCode(code, date)
+				if err != nil {
+					slog.Error("銘柄別株価データ取得・保存エラー", "code", code, "date", date, "error", err)
+					continue
+				}
+
+				// 銘柄間の間隔制御
+				if intervalMs > 0 {
+					time.Sleep(time.Duration(intervalMs) * time.Millisecond)
+				}
+			}
+		}
+
+		successCount++
+
+		// 日付間の間隔制御（最後の日付以外）
+		if i < len(dates)-1 && intervalMs > 0 {
+			time.Sleep(time.Duration(intervalMs) * time.Millisecond)
+		}
+	}
+
+	slog.Info("複数日付株価データ取得・保存完了", "success_count", successCount)
+	return nil
+}
+
 // Close データベース接続を閉じる
 func (s *DailyQuotesService) Close() error {
 	if s.dbConn != nil {
