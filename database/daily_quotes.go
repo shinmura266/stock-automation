@@ -48,10 +48,10 @@ func (r *DailyQuotesRepository) SaveDailyQuotes(resp []schema.DailyQuote) error 
 			return fmt.Errorf("データベース保存エラー (バッチ %d-%d): %v", i+1, end, result.Error)
 		}
 
-		slog.Info("daily_quotesバッチ保存完了", "batch", fmt.Sprintf("%d-%d", i+1, end), "count", len(batch))
+		slog.Debug("daily_quotesバッチ保存完了", "batch", fmt.Sprintf("%d-%d", i+1, end), "count", len(batch))
 	}
 
-	slog.Info("daily_quotes保存完了", "total_count", len(quotes))
+	slog.Debug("daily_quotes保存完了", "total_count", len(quotes))
 	return nil
 }
 
@@ -75,7 +75,7 @@ func (r *DailyQuotesRepository) SaveDailyQuotesBatch(quotes []schema.DailyQuote)
 		return fmt.Errorf("データベース保存エラー: %v", result.Error)
 	}
 
-	slog.Info("daily_quotesバッチ保存完了", "count", len(quotes))
+	slog.Debug("daily_quotesバッチ保存完了", "count", len(quotes))
 	return nil
 }
 
@@ -119,6 +119,6 @@ func (r *DailyQuotesRepository) DeleteDailyQuotes(code, date string) error {
 		return fmt.Errorf("データ削除エラー: %v", result.Error)
 	}
 
-	slog.Info("daily_quotes削除完了", "affected_rows", result.RowsAffected)
+	slog.Debug("daily_quotes削除完了", "affected_rows", result.RowsAffected)
 	return nil
 }

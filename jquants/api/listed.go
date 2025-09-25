@@ -25,22 +25,11 @@ func NewListedClient(baseURL string, httpClient *http.Client) *ListedClient {
 }
 
 // GetListedInfo 上場銘柄一覧を取得
-func (c *ListedClient) GetListedInfo(idToken string) (*schema.ListedInfoResponse, error) {
-	return c.GetListedInfoWithPagination(idToken, "", "", "")
-}
-
-// GetListedInfoWithPagination pagination_keyを指定して上場銘柄一覧を取得
-func (c *ListedClient) GetListedInfoWithPagination(idToken, code, date, paginationKey string) (*schema.ListedInfoResponse, error) {
+func (c *ListedClient) GetListedInfo(idToken, date string) (*schema.ListedInfoResponse, error) {
 	// パラメータ組み立て
 	params := url.Values{}
-	if code != "" {
-		params.Add("code", code)
-	}
 	if date != "" {
 		params.Add("date", date)
-	}
-	if paginationKey != "" {
-		params.Add("pagination_key", paginationKey)
 	}
 
 	// URLの構築
@@ -73,43 +62,4 @@ func (c *ListedClient) GetListedInfoWithPagination(idToken, code, date, paginati
 	}
 
 	return &listedResp, nil
-}
-
-// GetListedInfoByCode 指定された銘柄コードの銘柄情報を取得
-func (c *ListedClient) GetListedInfoByCode(idToken, code string) (*schema.ListedInfoResponse, error) {
-	return c.GetListedInfoWithPagination(idToken, code, "", "")
-}
-
-// GetListedInfoByDate 指定された日付の銘柄情報を取得
-func (c *ListedClient) GetListedInfoByDate(idToken, date string) (*schema.ListedInfoResponse, error) {
-	return c.GetListedInfoWithPagination(idToken, "", date, "")
-}
-
-// GetAllListedInfo pagination_keyを自動処理してすべての上場銘柄一覧を取得
-func (c *ListedClient) GetAllListedInfo(idToken, code, date string) (*schema.ListedInfoResponse, error) {
-	var allInfo []schema.ListedInfo
-	paginationKey := ""
-
-	for {
-		resp, err := c.GetListedInfoWithPagination(idToken, code, date, paginationKey)
-		if err != nil {
-			return nil, err
-		}
-
-		// 取得したデータを追加
-		allInfo = append(allInfo, resp.Info...)
-
-		// pagination_keyが空なら終了
-		if resp.PaginationKey == "" {
-			break
-		}
-
-		// 次のページングキーを設定
-		paginationKey = resp.PaginationKey
-	}
-
-	return &schema.ListedInfoResponse{
-		Info:          allInfo,
-		PaginationKey: "", // 全データ取得完了なので空
-	}, nil
 }

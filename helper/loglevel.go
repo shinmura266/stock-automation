@@ -12,7 +12,7 @@ import (
 func SetupLoggerWithLevel(specifiedLevel string) {
 	var logLevel string
 
-	// --logフラグが指定されている場合はそれを使用、なければ環境変数
+	// --verboseフラグが指定されている場合はそれを使用、なければ環境変数
 	if specifiedLevel != "" {
 		logLevel = strings.ToLower(specifiedLevel)
 	} else {

@@ -152,40 +152,6 @@ func (r *ListedInfoRepository) SaveListedInfo(listedInfo interface{}) error {
 	return nil
 }
 
-// GetListedInfoByCode 銘柄コードで銘柄情報を取得
-func (r *ListedInfoRepository) GetListedInfoByCode(code string) ([]schema.ListedInfo, error) {
-	var results []schema.ListedInfo
-	err := r.conn.GetGormDB().Where("code = ?", code).Order("effective_date DESC").Find(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("クエリ実行エラー: %v", err)
-	}
-
-	return results, nil
-}
-
-// GetListedInfoByDate 日付で銘柄情報を取得
-func (r *ListedInfoRepository) GetListedInfoByDate(date string) ([]schema.ListedInfo, error) {
-	var results []schema.ListedInfo
-	err := r.conn.GetGormDB().Where("effective_date = ?", date).Order("code").Find(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("クエリ実行エラー: %v", err)
-	}
-
-	return results, nil
-}
-
-// GetLatestListedInfo 最新の銘柄情報を取得
-func (r *ListedInfoRepository) GetLatestListedInfo() ([]schema.ListedInfo, error) {
-	var results []schema.ListedInfo
-	subQuery := r.conn.GetGormDB().Model(&schema.ListedInfo{}).Select("MAX(effective_date)")
-	err := r.conn.GetGormDB().Where("effective_date = (?)", subQuery).Order("code").Find(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("クエリ実行エラー: %v", err)
-	}
-
-	return results, nil
-}
-
 // GetListedCodesExcludingMarket 特定の市場コードを除外して銘柄コードリストを取得（昇順）
 func (r *ListedInfoRepository) GetListedCodesExcludingMarket(excludeMarketCode string, startCode string, limit int) ([]string, error) {
 	var codes []string

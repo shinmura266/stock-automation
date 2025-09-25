@@ -12,7 +12,6 @@ var (
 	statementsCode  string
 	statementsDate  string
 	statementsCount int
-	statementsDebug bool
 )
 
 var StatementsCmd = &cobra.Command{
@@ -27,7 +26,6 @@ func init() {
 	StatementsCmd.Flags().StringVar(&statementsCode, "code", "", "銘柄コード（4桁/5桁）")
 	StatementsCmd.Flags().StringVar(&statementsDate, "date", "", "開示日（YYYY-MM-DD形式）")
 	StatementsCmd.Flags().IntVar(&statementsCount, "count", 1, "取得回数（指定した日付からさかのぼる日数、デフォルト: 1）")
-	StatementsCmd.Flags().BoolVar(&statementsDebug, "debug", false, "デバッグモード（詳細ログ出力）")
 }
 
 func updateStatements(cmd *cobra.Command, args []string) error {
@@ -51,7 +49,7 @@ func updateStatements(cmd *cobra.Command, args []string) error {
 	if statementsCode != "" && statementsDate == "" {
 		// codeが指定された場合：指定銘柄の複数日付データを取得
 		dates := generateBackwardDatesForStatements(getTodayDateForStatements(), statementsCount)
-		err = service.UpdateStatementsMultipleDates([]string{statementsCode}, dates, 1000, statementsDebug)
+		err = service.UpdateStatementsMultipleDates([]string{statementsCode}, dates, 1000, false)
 		if err != nil {
 			return fmt.Errorf("財務情報データ更新エラー: %v", err)
 		}
@@ -59,14 +57,14 @@ func updateStatements(cmd *cobra.Command, args []string) error {
 	} else if statementsDate != "" && statementsCode == "" {
 		// dateが指定された場合：日付を遡って取得
 		dates := generateBackwardDatesForStatements(statementsDate, statementsCount)
-		err = service.UpdateStatementsMultipleDates([]string{}, dates, 1000, statementsDebug)
+		err = service.UpdateStatementsMultipleDates([]string{}, dates, 1000, false)
 		if err != nil {
 			return fmt.Errorf("財務情報データ更新エラー: %v", err)
 		}
 		fmt.Printf("財務情報データ更新完了（%d日分）\n", len(dates))
 	} else {
 		// codeとdateの両方が指定された場合（countは1のみ）
-		err = service.UpdateStatementsByCodeAndDate(statementsCode, statementsDate, statementsDebug)
+		err = service.UpdateStatementsByCodeAndDate(statementsCode, statementsDate, false)
 		if err != nil {
 			return fmt.Errorf("財務情報データ更新エラー: %v", err)
 		}

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	logLevel string
+	verbose bool
 )
 
 func main() {
@@ -25,19 +25,25 @@ var rootCmd = &cobra.Command{
 	Short: "J-Quantsデータ取得CLI",
 	Long:  "J-Quantsの各種データを取得して、DBへ保存するためのCLIツール",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// ログレベルを設定
-		helper.SetupLoggerWithLevel(logLevel)
-
 		// .envファイルから環境変数を読み込み
 		helper.LoadDotEnv()
+
+		// ログレベルを設定
+		var logLevel string
+		if verbose {
+			logLevel = "debug"
+		}
+		// verboseがfalseの場合は空文字列を渡し、helper.SetupLoggerWithLevelで環境変数を処理
+		helper.SetupLoggerWithLevel(logLevel)
 	},
 }
 
 func init() {
 	// グローバルフラグを追加
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log", "", "ログレベル (debug, info, warn, error)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "詳細ログを出力")
 
 	// サブコマンドを追加
 	rootCmd.AddCommand(cmd.DailyQuotesCmd)
 	rootCmd.AddCommand(cmd.StatementsCmd)
+	rootCmd.AddCommand(cmd.ListedInfoCmd)
 }
