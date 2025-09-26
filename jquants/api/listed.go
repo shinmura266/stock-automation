@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -25,13 +26,22 @@ func NewListedClient(baseURL string, httpClient *http.Client) *ListedClient {
 }
 
 // GetListedInfo 上場銘柄一覧を取得
-func (c *ListedClient) GetListedInfo(idToken, date string) (*schema.ListedInfoResponse, error) {
+func (c *ListedClient) GetListedInfo(idToken, date string) ([]schema.ListedInfo, error) {
 	// パラメータ組み立て
 	params := url.Values{}
 	if date != "" {
 		params.Add("date", date)
 	}
 
+	resp, err := c.requestListedInfo(idToken, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Info, nil
+}
+
+func (c *ListedClient) requestListedInfo(idToken string, params url.Values) (*schema.ListedInfoResponse, error) {
 	// URLの構築
 	requestURL := fmt.Sprintf("%s/listed/info", c.baseURL)
 	if len(params) > 0 {
@@ -42,9 +52,9 @@ func (c *ListedClient) GetListedInfo(idToken, date string) (*schema.ListedInfoRe
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Authorization", "Bearer "+idToken)
 
+	slog.Debug("ListedInfoリクエスト開始", "requestURL", requestURL)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -56,10 +66,11 @@ func (c *ListedClient) GetListedInfo(idToken, date string) (*schema.ListedInfoRe
 		return nil, fmt.Errorf("ステータスコードエラー: %d, レスポンス: %s", resp.StatusCode, string(body))
 	}
 
-	var listedResp schema.ListedInfoResponse
-	if err := json.NewDecoder(resp.Body).Decode(&listedResp); err != nil {
+	var result schema.ListedInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
 
-	return &listedResp, nil
+	slog.Debug("ListedInfoリクエスト完了", "count", len(result.Info))
+	return &result, nil
 }

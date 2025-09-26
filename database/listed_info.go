@@ -3,7 +3,6 @@ package database
 import (
 	"fmt"
 	"log/slog"
-	"reflect"
 	"time"
 
 	"stock-automation/schema"
@@ -21,140 +20,47 @@ func NewListedInfoRepository(conn *Connection) *ListedInfoRepository {
 	}
 }
 
-// SaveListedInfo 上場銘柄情報をデータベースに保存（ジェネリック対応）
-func (r *ListedInfoRepository) SaveListedInfo(listedInfo interface{}) error {
-	// リフレクションを使用して動的に型を処理
-	v := reflect.ValueOf(listedInfo)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	// Info配列を取得
-	infoField := v.FieldByName("Info")
-	if !infoField.IsValid() || infoField.Kind() != reflect.Slice {
-		return fmt.Errorf("Infoフィールドが見つからないか、スライスではありません")
-	}
-
-	if infoField.Len() == 0 {
+// SaveListedInfo 上場銘柄情報をデータベースに保存
+func (r *ListedInfoRepository) SaveListedInfo(listedInfos []schema.ListedInfo) error {
+	if len(listedInfos) == 0 {
 		return fmt.Errorf("保存するデータがありません")
 	}
 
-	// トランザクション開始
-	tx, cleanup := BeginTransaction(r.conn.GetDB())
-	defer cleanup()
-
-	// バッチ挿入用のプリペアドステートメント（スキーマ準拠）
-	// 既存データのeffective_dateより新しい場合のみ更新
-	stmt, err := tx.Prepare(`
-		INSERT INTO listed_info (
-			effective_date, code, company_name, company_name_english,
-			sector17_code, sector33_code, scale_category,
-			market_code, margin_code, margin_code_name
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			effective_date = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(effective_date)
-				ELSE effective_date
-			END,
-			company_name = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(company_name)
-				ELSE company_name
-			END,
-			company_name_english = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(company_name_english)
-				ELSE company_name_english
-			END,
-			sector17_code = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(sector17_code)
-				ELSE sector17_code
-			END,
-			sector33_code = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(sector33_code)
-				ELSE sector33_code
-			END,
-			scale_category = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(scale_category)
-				ELSE scale_category
-			END,
-			market_code = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(market_code)
-				ELSE market_code
-			END,
-			margin_code = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(margin_code)
-				ELSE margin_code
-			END,
-			margin_code_name = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN VALUES(margin_code_name)
-				ELSE margin_code_name
-			END,
-			updated_at = CASE 
-				WHEN VALUES(effective_date) > effective_date THEN CURRENT_TIMESTAMP
-				ELSE updated_at
-			END
-	`)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("プリペアドステートメント作成エラー: %v", err)
-	}
-	defer stmt.Close()
-
-	// データをバッチ挿入
-	insertedCount := 0
-
-	for i := 0; i < infoField.Len(); i++ {
-		info := infoField.Index(i)
-
-		// 日付をパース
-		dateStr := GetStringField(info, "Date")
-		date, err := time.Parse("2006-01-02", dateStr)
-		if err != nil {
-			slog.Warn("日付パースエラー",
-				"code", GetStringField(info, "Code"),
-				"date", dateStr,
-				"error", err)
-			continue
-		}
-
-		result, err := stmt.Exec(
-			date,
-			GetStringField(info, "Code"),
-			GetStringField(info, "CompanyName"),
-			GetStringField(info, "CompanyNameEnglish"),
-			GetStringField(info, "Sector17Code"),
-			GetStringField(info, "Sector33Code"),
-			GetStringField(info, "ScaleCategory"),
-			GetStringField(info, "MarketCode"),
-			GetStringField(info, "MarginCode"),
-			GetStringField(info, "MarginCodeName"),
-		)
-
-		if err != nil {
-			slog.Error("データ挿入エラー",
-				"code", GetStringField(info, "Code"),
-				"error", err)
-			continue
-		}
-
-		// 挿入された行数を確認
-		rowsAffected, _ := result.RowsAffected()
-		if rowsAffected > 0 {
-			insertedCount++
-		}
+	// タイムスタンプを設定
+	infos := make([]schema.ListedInfo, len(listedInfos))
+	now := time.Now()
+	for i, info := range listedInfos {
+		infos[i] = info
+		infos[i].CreatedAt = now
+		infos[i].UpdatedAt = now
 	}
 
-	// トランザクションをコミット
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("トランザクションコミットエラー: %v", err)
+	// バッチサイズを制限（MySQLのプレースホルダー制限を回避）
+	const batchSize = 100
+	db := r.conn.GetGormDB()
+
+	for i := 0; i < len(infos); i += batchSize {
+		end := i + batchSize
+		if end > len(infos) {
+			end = len(infos)
+		}
+
+		batch := infos[i:end]
+		result := db.Save(&batch)
+		if result.Error != nil {
+			return fmt.Errorf("データベース保存エラー (バッチ %d-%d): %v", i+1, end, result.Error)
+		}
+
+		slog.Debug("listed_infoバッチ保存完了", "batch", fmt.Sprintf("%d-%d", i+1, end), "count", len(batch))
 	}
 
-	slog.Info("データベース保存完了", "inserted_count", insertedCount)
+	slog.Debug("listed_info保存完了", "total_count", len(infos))
 	return nil
 }
 
 // GetListedInfo その他市場（0109）を除外して上場銘柄情報を取得（昇順）
 func (r *ListedInfoRepository) GetListedInfo(startCode string, limit int) ([]schema.ListedInfo, error) {
-	var listedInfos []schema.ListedInfo
+	var infos []schema.ListedInfo
 	query := r.conn.GetGormDB().Model(&schema.ListedInfo{}).
 		Where("market_code != ?", "0109")
 
@@ -170,10 +76,10 @@ func (r *ListedInfoRepository) GetListedInfo(startCode string, limit int) ([]sch
 		query = query.Limit(limit)
 	}
 
-	err := query.Find(&listedInfos).Error
-	if err != nil {
-		return nil, fmt.Errorf("クエリ実行エラー: %v", err)
+	result := query.Find(&infos)
+	if result.Error != nil {
+		return nil, fmt.Errorf("データ取得エラー: %v", result.Error)
 	}
 
-	return listedInfos, nil
+	return infos, nil
 }

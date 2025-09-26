@@ -54,8 +54,10 @@ func (c *DailyQuotesClient) GetDailyQuotes(idToken, code, date string) ([]schema
 
 		params.Add("pagination_key", resp.PaginationKey)
 
-		// PaginationKeyによる繰り返し時に1秒のインターバル
-		time.Sleep(1 * time.Second)
+		// PaginationKeyによる繰り返し時にintervalのインターバル
+		if c.interval > 0 {
+			time.Sleep(time.Duration(c.interval) * time.Second)
+		}
 	}
 
 	return result, nil

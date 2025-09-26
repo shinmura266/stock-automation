@@ -3,7 +3,7 @@ package api
 import "net/http"
 
 const baseURL = "https://api.jquants.com/v1"
-const interval = 1000
+const interval = 1
 
 // Client J-Quants APIクライアント
 type Client struct {

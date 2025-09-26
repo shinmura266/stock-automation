@@ -56,18 +56,18 @@ func (s *ListedInfoService) UpdateListedInfo(date string) error {
 		return fmt.Errorf("上場銘柄情報取得エラー: %v", err)
 	}
 
-	if len(listedInfo.Info) == 0 {
+	if len(listedInfo) == 0 {
 		slog.Warn("取得したデータがありません", "date", date)
 		return nil
 	}
 
-	slog.Debug("上場銘柄情報取得完了", "count", len(listedInfo.Info))
+	slog.Debug("上場銘柄情報取得完了", "count", len(listedInfo))
 
 	// データベースに保存
 	if err := s.repository.SaveListedInfo(listedInfo); err != nil {
 		return fmt.Errorf("データベース保存エラー: %v", err)
 	}
 
-	slog.Info("上場銘柄情報更新完了", "count", len(listedInfo.Info))
+	slog.Info("上場銘柄情報更新完了", "count", len(listedInfo))
 	return nil
 }

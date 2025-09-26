@@ -49,6 +49,7 @@ func (s *DailyQuotesService) UpdateDailyQuotes(code, date string) error {
 	if err != nil {
 		return fmt.Errorf("IDトークン取得エラー: %v", err)
 	}
+
 	quotes, err := s.client.DailyQuotesClient.GetDailyQuotes(idToken, code, date)
 	if err != nil {
 		return fmt.Errorf("株価データ取得エラー: %v", err)
@@ -59,7 +60,7 @@ func (s *DailyQuotesService) UpdateDailyQuotes(code, date string) error {
 		if err := s.repository.SaveDailyQuotes(quotes); err != nil {
 			return fmt.Errorf("データベース保存エラー: %v", err)
 		}
-		slog.Info("銘柄別株価データ保存完了", "code", code, "date", date, "count", len(quotes))
+		slog.Info("株価データ保存完了", "code", code, "date", date, "count", len(quotes))
 	}
 
 	return nil
