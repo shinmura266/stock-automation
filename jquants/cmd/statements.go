@@ -30,8 +30,10 @@ func init() {
 }
 
 func updateStatements(cmd *cobra.Command, args []string) error {
+	// グローバルフラグからverboseの値を取得
+	verbose, _ := cmd.Root().PersistentFlags().GetBool("verbose")
 
-	service, err := service.NewStatementsService(statementsInterval)
+	service, err := service.NewStatementsService(statementsInterval, verbose)
 	if err != nil {
 		return fmt.Errorf("財務情報サービス初期化エラー: %v", err)
 	}

@@ -1,6 +1,8 @@
 package schema
 
-import "time"
+import (
+	"time"
+)
 
 // リフレッシュトークンリクエスト
 // https://api.jquants.com/v1/token/auth_user

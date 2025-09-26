@@ -25,7 +25,10 @@ func init() {
 }
 
 func updateListedInfo(cmd *cobra.Command, args []string) error {
-	service, err := service.NewListedInfoService()
+	// グローバルフラグからverboseの値を取得
+	verbose, _ := cmd.Root().PersistentFlags().GetBool("verbose")
+
+	service, err := service.NewListedInfoService(verbose)
 	if err != nil {
 		return fmt.Errorf("上場銘柄情報サービス初期化エラー: %v", err)
 	}

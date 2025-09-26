@@ -43,6 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "詳細ログを出力")
 
 	// サブコマンドを追加
+	rootCmd.AddCommand(cmd.DailyCmd)
 	rootCmd.AddCommand(cmd.DailyQuotesCmd)
 	rootCmd.AddCommand(cmd.StatementsCmd)
 	rootCmd.AddCommand(cmd.ListedInfoCmd)

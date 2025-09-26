@@ -18,9 +18,9 @@ type StatementsService struct {
 }
 
 // NewStatementsService 新しい財務情報サービスを作成
-func NewStatementsService(interval int) (*StatementsService, error) {
+func NewStatementsService(interval int, verbose bool) (*StatementsService, error) {
 	// データベース接続を作成
-	dbConn, err := database.NewConnectionFromEnv()
+	dbConn, err := database.NewConnectionFromEnv(verbose)
 	if err != nil {
 		return nil, fmt.Errorf("データベース接続エラー: %v", err)
 	}

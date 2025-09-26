@@ -46,7 +46,10 @@ func (r *ListedInfoRepository) SaveListedInfo(listedInfos []schema.ListedInfo) e
 		}
 
 		batch := infos[i:end]
-		result := db.Save(&batch)
+		// 存在しないカラムを除外して保存
+		result := db.Select("effective_date", "code", "company_name", "company_name_english",
+			"sector17_code", "sector33_code", "scale_category", "market_code", "margin_code",
+			"margin_code_name", "created_at", "updated_at").Save(&batch)
 		if result.Error != nil {
 			return fmt.Errorf("データベース保存エラー (バッチ %d-%d): %v", i+1, end, result.Error)
 		}

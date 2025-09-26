@@ -3,9 +3,12 @@ package database
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"stock-automation/schema"
+
+	"gorm.io/gorm/clause"
 )
 
 // StatementsRepository 財務情報のリポジトリ
@@ -20,7 +23,7 @@ func NewStatementsRepository(conn *Connection) *StatementsRepository {
 	}
 }
 
-// SaveFinancialStatements 財務情報をデータベースに保存
+// SaveFinancialStatements 財務情報をデータベースに保存（シンプル版）
 func (r *StatementsRepository) SaveFinancialStatements(statements []schema.FinancialStatement) error {
 	if len(statements) == 0 {
 		return fmt.Errorf("保存するデータがありません")
@@ -35,23 +38,47 @@ func (r *StatementsRepository) SaveFinancialStatements(statements []schema.Finan
 		financialStatements[i].UpdatedAt = now
 	}
 
-	// バッチサイズを制限（MySQLのプレースホルダー制限を回避）
-	const batchSize = 100
 	db := r.conn.GetGormDB()
 
-	for i := 0; i < len(financialStatements); i += batchSize {
-		end := i + batchSize
-		if end > len(financialStatements) {
-			end = len(financialStatements)
-		}
+	// 汎用関数を使用してシンプルに実装
+	for i, stmt := range financialStatements {
+		// 汎用関数で空文字列をNULLに変換
+		values := ConvertEmptyStringsToNull(&stmt)
 
-		batch := financialStatements[i:end]
-		result := db.Save(&batch)
+		// ON DUPLICATE KEY UPDATE を使用してUPSERT
+		result := db.Model(&schema.FinancialStatement{}).Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "disclosed_date"},
+				{Name: "local_code"},
+				{Name: "type_of_current_period"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"disclosed_time", "disclosure_number", "type_of_document",
+				"current_period_start_date", "current_period_end_date",
+				"current_fiscal_year_start_date", "current_fiscal_year_end_date",
+				"next_fiscal_year_start_date", "next_fiscal_year_end_date",
+				"net_sales", "operating_profit", "ordinary_profit", "profit",
+				"eps", "diluted_eps", "total_assets", "equity",
+				"equity_to_asset_ratio", "bvps", "cf_operating", "cf_investing",
+				"cf_financing", "cash_and_equivalents", "updated_at",
+			}),
+		}).Create(&values)
+
 		if result.Error != nil {
-			return fmt.Errorf("データベース保存エラー (バッチ %d-%d): %v", i+1, end, result.Error)
+			// 外部キー制約エラー（1452）の場合はログを出力して続行
+			if strings.Contains(result.Error.Error(), "Error 1452") && strings.Contains(result.Error.Error(), "foreign key constraint") {
+				slog.Debug("外部キー制約エラーでスキップ",
+					"local_code", stmt.LocalCode,
+					"disclosed_date", stmt.DisclosedDate,
+					"error", result.Error.Error())
+				continue
+			}
+			return fmt.Errorf("データベース保存エラー (レコード %d): %v", i+1, result.Error)
 		}
 
-		slog.Debug("statementsバッチ保存完了", "batch", fmt.Sprintf("%d-%d", i+1, end), "count", len(batch))
+		if (i+1)%10 == 0 {
+			slog.Debug("statements保存進捗", "progress", fmt.Sprintf("%d/%d", i+1, len(financialStatements)))
+		}
 	}
 
 	slog.Debug("statements保存完了", "total_count", len(financialStatements))

@@ -15,9 +15,9 @@ type ListedInfoService struct {
 }
 
 // NewListedInfoService 新しい上場銘柄情報サービスを作成
-func NewListedInfoService() (*ListedInfoService, error) {
+func NewListedInfoService(verbose bool) (*ListedInfoService, error) {
 	// データベース接続を作成
-	dbConn, err := database.NewConnectionFromEnv()
+	dbConn, err := database.NewConnectionFromEnv(verbose)
 	if err != nil {
 		return nil, fmt.Errorf("データベース接続エラー: %v", err)
 	}

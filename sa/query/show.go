@@ -40,7 +40,7 @@ func showTable(cmd *cobra.Command, args []string) error {
 	}
 
 	// データベース接続
-	conn, err := database.NewConnectionFromEnv()
+	conn, err := database.NewConnectionFromEnv(false) // queryでは非verbose
 	if err != nil {
 		return fmt.Errorf("データベース接続エラー: %v", err)
 	}

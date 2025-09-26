@@ -30,12 +30,12 @@ type Connection struct {
 }
 
 // NewConnectionFromEnv 環境変数からデータベース接続を作成
-func NewConnectionFromEnv() (*Connection, error) {
+func NewConnectionFromEnv(verbose bool) (*Connection, error) {
 	config, err := NewConfigFromEnv()
 	if err != nil {
 		return nil, err
 	}
-	return NewConnection(config)
+	return NewConnection(config, verbose)
 }
 
 // loadDatabaseConfigFromEnv データベース設定を環境変数から読み込む
@@ -70,16 +70,24 @@ func NewConfig(host string, port int, user, password, database string) *Config {
 }
 
 // NewConnection 新しいデータベース接続を作成
-func NewConnection(config *Config) (*Connection, error) {
+func NewConnection(config *Config, verbose bool) (*Connection, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.User, config.Password, config.Host, config.Port, config.Database)
+
+	// verboseに基づいてログレベルを設定
+	var logLevel logger.LogLevel
+	if verbose {
+		logLevel = logger.Warn
+	} else {
+		logLevel = logger.Silent
+	}
 
 	// カスタムロガーを作成（スローログの閾値を1秒に設定）
 	customLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
 			SlowThreshold:             1 * time.Second, // スロークエリの閾値
-			LogLevel:                  logger.Info,     // ログレベル
+			LogLevel:                  logLevel,        // verboseに基づくログレベル
 			IgnoreRecordNotFoundError: true,            // ErrRecordNotFound エラーを無視
 			Colorful:                  false,           // カラー出力を無効化
 		},

@@ -39,7 +39,7 @@ func initMigrator() *migrate.Migrate {
 
 	// データベース接続を作成
 	slog.Debug("データベースに接続中...")
-	conn, err := dbpkg.NewConnectionFromEnv()
+	conn, err := dbpkg.NewConnectionFromEnv(false) // migrateでは非verbose
 	if err != nil {
 		slog.Error("データベース設定の作成エラー", "error", err)
 		os.Exit(1)

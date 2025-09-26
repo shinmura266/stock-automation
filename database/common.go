@@ -2,7 +2,9 @@ package database
 
 import (
 	"database/sql"
+	"reflect"
 	"strconv"
+	"strings"
 )
 
 // NullIfEmpty 空文字列の場合はnilを返すヘルパー関数（整数値用）
@@ -42,4 +44,60 @@ func BeginTransaction(db *sql.DB) (*sql.Tx, func()) {
 	}
 
 	return tx, cleanup
+}
+
+// ConvertEmptyStringsToNull 構造体の空文字列フィールドをNULLに変換する汎用関数
+func ConvertEmptyStringsToNull(obj interface{}) map[string]interface{} {
+	values := make(map[string]interface{})
+
+	v := reflect.ValueOf(obj)
+	t := reflect.TypeOf(obj)
+
+	// ポインタの場合は要素を取得
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		// gormタグからカラム名を取得
+		gormTag := fieldType.Tag.Get("gorm")
+		if gormTag == "" {
+			continue
+		}
+
+		// カラム名を抽出（例: "column:net_sales" -> "net_sales"）
+		columnName := ExtractColumnName(gormTag)
+		if columnName == "" {
+			continue
+		}
+
+		// 文字列フィールドの場合のみ処理
+		if field.Kind() == reflect.String {
+			if field.String() == "" {
+				values[columnName] = nil
+			} else {
+				values[columnName] = field.String()
+			}
+		} else {
+			// 文字列以外はそのまま
+			values[columnName] = field.Interface()
+		}
+	}
+
+	return values
+}
+
+// ExtractColumnName gormタグからカラム名を抽出
+func ExtractColumnName(gormTag string) string {
+	// "column:net_sales;primaryKey" から "net_sales" を抽出
+	if len(gormTag) > 7 && gormTag[:7] == "column:" {
+		// セミコロンで分割して最初の部分（カラム名）を取得
+		parts := strings.Split(gormTag[7:], ";")
+		return parts[0]
+	}
+	return ""
 }
