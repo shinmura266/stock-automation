@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"stock-automation/jquants/service"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -49,6 +50,10 @@ func updateDaily(cmd *cobra.Command, args []string) error {
 	}
 	slog.Info("上場銘柄一覧更新完了")
 
+	// インターバル待機
+	slog.Debug("インターバル待機中", "interval", dailyInterval)
+	time.Sleep(time.Duration(dailyInterval) * time.Second)
+
 	// 2. 日次株価四本値の更新
 	slog.Info("2. 日次株価四本値更新開始")
 	dailyQuotesService, err := service.NewDailyQuotesService(dailyInterval, verbose)
@@ -62,6 +67,10 @@ func updateDaily(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("日次株価四本値データ更新エラー: %v", err)
 	}
 	slog.Info("日次株価四本値更新完了")
+
+	// インターバル待機
+	slog.Debug("インターバル待機中", "interval", dailyInterval)
+	time.Sleep(time.Duration(dailyInterval) * time.Second)
 
 	// 3. 財務情報の更新
 	slog.Info("3. 財務情報更新開始")

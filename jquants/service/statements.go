@@ -61,6 +61,8 @@ func (s *StatementsService) UpdateStatements(code, date string) error {
 			return fmt.Errorf("データベース保存エラー: %v", err)
 		}
 		slog.Info("財務情報保存完了", "code", code, "date", date, "count", len(statements))
+	} else {
+		slog.Info("取得したデータがありません", "code", code, "date", date)
 	}
 
 	return nil
@@ -74,12 +76,12 @@ func (s *StatementsService) UpdateStatementsMultipleDates(date string, count int
 		return fmt.Errorf("countが0以下です")
 	}
 
-	slog.Info("複数日付財務情報取得・保存開始", "start_date", date, "count", count)
+	slog.Debug("複数日付財務情報取得・保存開始", "start_date", date, "count", count)
 
 	for i := 0; i < count; i++ {
 		// 指定日付からi日分さかのぼった日付を計算
 		currentDate := helper.SubDate(date, i)
-		slog.Info("日付別財務情報取得・保存中", "date", currentDate, "progress", fmt.Sprintf("%d/%d", i+1, count))
+		slog.Debug("日付別財務情報取得・保存中", "date", currentDate, "progress", fmt.Sprintf("%d/%d", i+1, count))
 
 		err := s.UpdateStatements("", currentDate)
 		if err != nil {
@@ -92,7 +94,7 @@ func (s *StatementsService) UpdateStatementsMultipleDates(date string, count int
 		}
 	}
 
-	slog.Info("複数日付財務情報取得・保存完了", "count", count)
+	slog.Debug("複数日付財務情報取得・保存完了", "count", count)
 	return nil
 }
 
@@ -104,7 +106,7 @@ func (s *StatementsService) UpdateStatementsMultipleCodes(code string, count int
 		return fmt.Errorf("countが0以下です")
 	}
 
-	slog.Info("複数銘柄財務情報取得・保存開始", "code", code, "count", count)
+	slog.Debug("複数銘柄財務情報取得・保存開始", "code", code, "count", count)
 
 	// リポジトリを作成
 	repository := database.NewListedInfoRepository(s.dbConn)
@@ -127,7 +129,7 @@ func (s *StatementsService) UpdateStatementsMultipleCodes(code string, count int
 			time.Sleep(time.Duration(s.interval) * time.Second)
 		}
 	}
-	slog.Info("財務情報更新完了", "count", len(listedInfos))
+	slog.Debug("財務情報更新完了", "count", len(listedInfos))
 	return nil
 }
 
@@ -152,7 +154,7 @@ func (s *StatementsService) UpdateStatementsWithCount(code, date string, count i
 		if err != nil {
 			return fmt.Errorf("財務情報更新エラー: %v", err)
 		}
-		slog.Info("財務情報更新完了")
+		slog.Debug("財務情報更新完了")
 		return nil
 	}
 
@@ -169,7 +171,7 @@ func (s *StatementsService) UpdateStatementsWithCount(code, date string, count i
 			return fmt.Errorf("財務情報更新エラー: %v", err)
 		}
 	}
-	slog.Info("財務情報更新完了", "count", count)
+	slog.Debug("財務情報更新完了", "count", count)
 
 	return nil
 }

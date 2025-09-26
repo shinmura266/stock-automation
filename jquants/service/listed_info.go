@@ -68,6 +68,6 @@ func (s *ListedInfoService) UpdateListedInfo(date string) error {
 		return fmt.Errorf("データベース保存エラー: %v", err)
 	}
 
-	slog.Info("上場銘柄情報更新完了", "count", len(listedInfo))
+	slog.Info("上場銘柄情報更新完了", "date", date, "count", len(listedInfo))
 	return nil
 }
