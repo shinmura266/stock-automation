@@ -3,12 +3,15 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"strconv"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Config データベース設定
@@ -71,8 +74,21 @@ func NewConnection(config *Config) (*Connection, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.User, config.Password, config.Host, config.Port, config.Database)
 
+	// カスタムロガーを作成（スローログの閾値を1秒に設定）
+	customLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             1 * time.Second, // スロークエリの閾値
+			LogLevel:                  logger.Info,     // ログレベル
+			IgnoreRecordNotFoundError: true,            // ErrRecordNotFound エラーを無視
+			Colorful:                  false,           // カラー出力を無効化
+		},
+	)
+
 	// GORM接続を作成
-	gormDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: customLogger,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("データベース接続エラー: %v", err)
 	}

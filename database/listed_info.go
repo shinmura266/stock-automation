@@ -152,21 +152,28 @@ func (r *ListedInfoRepository) SaveListedInfo(listedInfo interface{}) error {
 	return nil
 }
 
-// GetListedCodesExcludingMarket 特定の市場コードを除外して銘柄コードリストを取得（昇順）
-func (r *ListedInfoRepository) GetListedCodesExcludingMarket(excludeMarketCode string, startCode string, limit int) ([]string, error) {
-	var codes []string
-	subQuery := r.conn.GetGormDB().Model(&schema.ListedInfo{}).Select("MAX(effective_date)")
-	err := r.conn.GetGormDB().Model(&schema.ListedInfo{}).
-		Distinct("code").
-		Where("effective_date = (?)", subQuery).
-		Where("market_code != ?", excludeMarketCode).
-		Where("code >= ?", startCode).
-		Order("code").
-		Limit(limit).
-		Pluck("code", &codes).Error
+// GetListedInfo その他市場（0109）を除外して上場銘柄情報を取得（昇順）
+func (r *ListedInfoRepository) GetListedInfo(startCode string, limit int) ([]schema.ListedInfo, error) {
+	var listedInfos []schema.ListedInfo
+	query := r.conn.GetGormDB().Model(&schema.ListedInfo{}).
+		Where("market_code != ?", "0109")
+
+	// startCodeが空文字列でない場合のみフィルターを適用
+	if startCode != "" {
+		query = query.Where("code >= ?", startCode)
+	}
+
+	query = query.Order("code")
+
+	// limitが0より大きい場合のみ制限を適用
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	err := query.Find(&listedInfos).Error
 	if err != nil {
 		return nil, fmt.Errorf("クエリ実行エラー: %v", err)
 	}
 
-	return codes, nil
+	return listedInfos, nil
 }
